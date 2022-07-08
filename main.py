@@ -11,16 +11,8 @@ import importlib
 import games
 
 
-def sroll(roll):
-    assert 0 <= roll <= 2
-    if roll == 0: return 'win'
-    if roll == 1: return 'tie'
-    if roll == 2: return 'lose'
-
 def sfrac(val):
     return str(fractions.Fraction.from_float(val).limit_denominator())
-
-
 
 def solve(args):
     game_cls = getattr(games, args.game)
@@ -35,7 +27,7 @@ def solve(args):
         for h, xv in sorted(ps.items()):
             if h == (): continue
             print('  '*len(h),
-                  sroll(h[0]),
+                  game.repr_priv(h[0]),
                   game.repr_hist(h[1:]),
                   end=' ',
                   )
@@ -60,7 +52,7 @@ def solve(args):
         print('Value:', sfrac(-lam2))
         if args.print_strategy:
             for h, xv in ps2.items():
-                print(sroll(h[0]))
+                print(game.repr_priv(h[0]))
                 print(game.repr_hist(h[1:]), sfrac(xv))
 
         if args.save_strategy is not None:

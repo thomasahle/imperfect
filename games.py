@@ -33,9 +33,11 @@ class Game:
         """ The score of the leaf node relative to player 1 """
         raise NotImplementedError
 
+    def repr_priv(self, priv):
+        raise NotImplementedError
+
     def repr_hist(self, hist):
-        if not hist:
-            return '()'
+        if not hist: return '()'
         return "(" + ",".join(map(str, hist)) + ")"
 
 
@@ -64,6 +66,11 @@ class WinTieLoseGame(Game):
                 or d2 == LOSE and winner == 0:
             res -= 1
         return res
+
+    def repr_priv(self, priv):
+        if priv == 0: return 'win'
+        if priv == 1: return 'tie'
+        if priv == 2: return 'lose'
 
 
 class numbers(WinTieLoseGame):
@@ -148,7 +155,7 @@ class dudo(Game):
         self.dice = [args.a_dice, args.b_dice]
         self.sides = args.sides
         self.joker = args.joker
-        self.max = sum(self.dice) * (2 if self.joker else 1)
+        self.max = sum(self.dice)
 
     def privates(self, player):
         # Should remove symmetries here, but for random mode (default for dudo)
@@ -170,12 +177,18 @@ class dudo(Game):
         assert hist[-1] == dudo_doubt
         assert len(hist) >= 2
         n, d = hist[-2]
-        cnt = Counter(priv1 + priv2)
+        cnter = Counter(priv1 + priv2)
+        cnt = cnter[d]
+        if self.joker and d != 1:
+            cnt += cnter[1]
         # The player that made the call (not the doubter)
         player = self.get_player(hist)
         # The call was true
-        if cnt[n] >= d:
+        if cnt >= n:
             return 1 if player == 0 else -1
         else:
             return -1 if player == 0 else 1
+
+    def repr_priv(self, priv):
+        return repr(priv)
 
