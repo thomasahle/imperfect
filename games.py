@@ -1,3 +1,7 @@
+from collections import Counter
+import itertools
+
+
 ################################################################
 # Game definition
 ################################################################
@@ -26,6 +30,7 @@ class Game:
             yield from self.histories(root=c)
 
     def score(self, priv1, priv2, hist):
+        """ The score of the leaf node relative to player 1 """
         raise NotImplementedError
 
     def repr_hist(self, hist):
@@ -45,7 +50,7 @@ class WinTieLoseGame(Game):
         raise NotImplementedError
 
     def score(self, priv1, priv2, hist):
-        ''' Get the score in {-1,1} relative to x-player '''
+        ''' Get the score in {-1,0,1} relative to x-player '''
         d1, = priv1
         d2, = priv2
         winner = self.winner(hist)
@@ -61,10 +66,10 @@ class WinTieLoseGame(Game):
         return res
 
 
-class NumberGame(WinTieLoseGame):
-    def __init__(self, ns, random_hidden):
-        super().__init__(random_hidden)
-        self.ns = ns
+class numbers(WinTieLoseGame):
+    def __init__(self, args):
+        super().__init__(args.random)
+        self.ns = [n+1 for n in args.numbers]
 
     def children(self, h):
         if len(h) >= len(self.ns):
@@ -80,5 +85,97 @@ class NumberGame(WinTieLoseGame):
         return None
 
 
-class TicTacToe(WinTieLoseGame):
-    ...
+ttt_syms = (
+    (0, 1, 2, 3, 4, 5, 6, 7, 8),
+    (2, 5, 8, 1, 4, 7, 0, 3, 6),
+    (8, 7, 6, 5, 4, 3, 2, 1, 0),
+    (6, 3, 0, 7, 4, 1, 8, 5, 2),
+    (2, 1, 0, 5, 4, 3, 8, 7, 6),
+    (8, 5, 2, 7, 4, 1, 6, 3, 0),
+    (6, 7, 8, 3, 4, 5, 0, 1, 2),
+    (0, 3, 6, 1, 4, 7, 2, 5, 8),
+)
+ttt_goals = (
+    (0, 1, 2),
+    (3, 4, 5),
+    (6, 7, 8),
+    (0, 3, 6),
+    (1, 4, 7),
+    (2, 5, 8),
+    (0, 4, 8),
+    (2, 4, 6),
+)
+class tictactoe(WinTieLoseGame):
+    def __init__(self, args):
+        super().__init__(args.random)
+
+    def _toboard(self, h):
+        board = [-1] * 9
+        for i in h[::2]:
+            board[i] = 0
+        for i in h[1::2]:
+            board[i] = 1
+        return board
+
+    def winner(self, h):
+        board = self._toboard(h)
+        for goal in ttt_goals:
+            if all(board[i] == 0 for i in goal):
+                return 0
+            if all(board[i] == 1 for i in goal):
+                return 1
+        return None
+
+    def _sym(self, h):
+        # Get smallest symmetric representative of history
+        return min(tuple(sym[i] for i in sym) for sym in ttt_syms)
+
+    def children(self, h):
+        if self.winner(h) is not None or len(h) == 9:
+            return
+        opts = set()
+        for i, b in enumerate(self._toboard(h)):
+            if b == -1:
+                opts.add(self._sym(h + (i,)))
+        yield from opts
+
+
+dudo_doubt = None
+
+class dudo(Game):
+    def __init__(self, args):
+        super().__init__(args.random)
+        self.dice = [args.a_dice, args.b_dice]
+        self.sides = args.sides
+        self.joker = args.joker
+        self.max = sum(self.dice) * (2 if self.joker else 1)
+
+    def privates(self, player):
+        # Should remove symmetries here, but for random mode (default for dudo)
+        # we would need a weighted sample, which is currently not supported
+        return itertools.product(range(1, self.sides+1), repeat=self.dice[player])
+
+    def children(self, h):
+        if h and h[-1] is dudo_doubt:
+            return
+        n, d = (1, 0) if len(h) == 0 else h[-1]
+        for n1 in range(n, self.max+1):
+            for d1 in range(1, self.sides+1):
+                if (n1, d1) > (n, d):
+                    yield h + ((n1, d1),)
+        if len(h) > 0:
+            yield h + (dudo_doubt,)
+
+    def score(self, priv1, priv2, hist):
+        assert hist[-1] == dudo_doubt
+        assert len(hist) >= 2
+        n, d = hist[-2]
+        cnt = Counter(priv1 + priv2)
+        # The player that made the call (not the doubter)
+        player = self.get_player(hist)
+        # The call was true
+        if cnt[n] >= d:
+            return 1 if player == 0 else -1
+        else:
+            return -1 if player == 0 else 1
+
