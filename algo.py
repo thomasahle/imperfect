@@ -19,11 +19,10 @@ def solve_game(game, strategy_player=0, verbose=False):
             for h in game.histories()}
     ps[()] = solver.NumVar(0, 1, '')
 
-    # FIXME: Why can the value only be in [-1, 1]?
-    vs = {priv + h: solver.NumVar(-1, 1, '')
+    vs = {priv + h: solver.NumVar(-solver.infinity(), solver.infinity(), '')
             for priv in game.privates(1-strategy_player)
             for h in game.histories()}
-    vs[()] = solver.NumVar(-1, 1, '')
+    vs[()] = solver.NumVar(-solver.infinity(), solver.infinity(), '')
 
 
     if verbose:

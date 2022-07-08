@@ -192,3 +192,53 @@ class dudo(Game):
     def repr_priv(self, priv):
         return repr(priv)
 
+
+CHECK, BET, FOLD, CALL = range(4)
+
+class kuhn(Game):
+    def __init__(self, args):
+        super().__init__(args.random)
+        self.dice = [args.a_dice, args.b_dice]
+        self.sides = args.sides
+        self.joker = args.joker
+        self.max = sum(self.dice)
+
+    def privates(self, player):
+        return ((i,) for i in range(3))
+
+    def children(self, h):
+        if h == ():
+            yield (CHECK,)
+            yield (BET,)
+        elif h == (CHECK,):
+            yield h + (CHECK,)
+            yield h + (BET,)
+        elif h == (CHECK, BET):
+            yield h + (FOLD,)
+            yield h + (CALL,)
+        elif h == (BET,):
+            yield h + (FOLD,)
+            yield h + (CALL,)
+
+    def score(self, priv1, priv2, hist):
+        c1, = priv1
+        c2, = priv2
+        # If the last player folded, the current player wins a point
+        if hist[-1] == FOLD:
+            return 1 if self.get_player(hist) == 0 else -1
+        # Normal Kuhn poker doesn't have ties. We do.
+        if c1 == c2:
+            return 0
+        # Else the player with the highest card wins
+        pot = 2 if BET in hist else 1
+        if c1 > c2:
+            return pot
+        return -pot
+
+    def repr_priv(self, priv):
+        return 'JQK'[priv]
+
+    def repr_hist(self, hist):
+        if not hist: return '()'
+        return "(" + ",".join('CBFC'[i] for i in hist) + ")"
+

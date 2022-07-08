@@ -14,6 +14,20 @@ import games
 def sfrac(val):
     return str(fractions.Fraction.from_float(val).limit_denominator())
 
+def print_strat(game, ps, strategy_player=0):
+    for h, xv in sorted(ps.items()):
+        if h == (): continue
+        print('  '*len(h),
+              game.repr_priv(h[0]),
+              game.repr_hist(h[1:]),
+              end=' ')
+        if np.isclose(xv, 0):
+            print()
+        elif game.get_player(h[1:]) == strategy_player:
+            print()
+        else:
+            print('wp', sfrac(xv / ps[h[:-1]]))
+
 def solve(args):
     game_cls = getattr(games, args.game)
     game = game_cls(args)
@@ -24,17 +38,7 @@ def solve(args):
     print('If strat_player=0')
     print('Value:', sfrac(lam))
     if args.print_strategy:
-        for h, xv in sorted(ps.items()):
-            if h == (): continue
-            print('  '*len(h),
-                  game.repr_priv(h[0]),
-                  game.repr_hist(h[1:]),
-                  end=' ',
-                  )
-            if np.isclose(xv, 0):
-                print()
-            else:
-                print('wp', sfrac(xv / ps[h[:-1]]))
+        print_strat(game, ps)
 
     if args.save_strategy is not None:
         vals = {h: xv for h, xv in ps.items()}
@@ -51,9 +55,7 @@ def solve(args):
         print('If strat_player=1')
         print('Value:', sfrac(-lam2))
         if args.print_strategy:
-            for h, xv in ps2.items():
-                print(game.repr_priv(h[0]))
-                print(game.repr_hist(h[1:]), sfrac(xv))
+            print_strat(game, ps2, strategy_player=1)
 
         if args.save_strategy is not None:
             vals = {h: xv for h, xv in ps2.items()}
@@ -125,6 +127,8 @@ if __name__ == '__main__':
     parser_solve.add_argument('game', type=str, help='Game to play, like numbers or tictactoe')
     parser_solve.add_argument('--print-strategy', action='store_true', help='Whether to output the strategy (rather than just the result)')
     parser_solve.add_argument('--save-strategy', type=str, help='Output path for LP variables')
+
+    parser_solve.add_argument('--numbers', type=int, default=1, nargs='+')
 
     parser_solve.add_argument('--a-dice', type=int, default=1)
     parser_solve.add_argument('--b-dice', type=int, default=1)
